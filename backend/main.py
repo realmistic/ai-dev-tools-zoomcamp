@@ -49,7 +49,10 @@ async def create_group(group: GroupBase):
 @app.get("/groups/{group_id}", response_model=GroupDetail)
 async def get_group(group_id: int):
     """Get group details."""
-    return get_group_detail(group_id)
+    try:
+        return get_group_detail(group_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error loading group: {str(e)}")
 
 
 def get_group_detail(group_id: int) -> GroupDetail:
