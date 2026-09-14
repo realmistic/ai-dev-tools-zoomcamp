@@ -14,38 +14,52 @@
     </div>
 </div>
 
+<!-- Balance Breakdown -->
 <div class="row mb-4">
-    <div class="col-md-6">
+    <div class="col-lg-8">
         <div class="card border-0 shadow-sm">
-            <div class="card-body text-center">
-                <h6 class="card-title text-muted">Balance</h6>
-                {% if balance > 0 %}
-                    <div class="h2 text-success fw-bold">+${{ balance|floatformat:2 }}</div>
-                    <p class="text-muted">{{ person.name }} is owed money (lender)</p>
-                {% elif balance < 0 %}
-                    <div class="h2 text-danger fw-bold">-${{ balance|abs_value|floatformat:2 }}</div>
-                    <p class="text-muted">{{ person.name }} owes money (borrower)</p>
-                {% else %}
-                    <div class="h2 text-muted">$0.00</div>
-                    <p class="text-muted">Settled up!</p>
-                {% endif %}
-            </div>
-        </div>
-    </div>
+            <div class="card-body">
+                <h6 class="card-title text-muted mb-4">Balance Breakdown</h6>
+                
+                <div class="row mb-3">
+                    <div class="col-md-4 text-center">
+                        <small class="d-block text-muted mb-1">Paid</small>
+                        <div class="h4 fw-bold">${{ total_paid|floatformat:2 }}</div>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <small class="d-block text-muted mb-1">Fair Share</small>
+                        <div class="h4 fw-bold">${{ fair_share|floatformat:2 }}</div>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <small class="d-block text-muted mb-1">Balance</small>
+                        {% if balance > 0 %}
+                            <div class="h4 fw-bold text-success">+${{ balance|floatformat:2 }}</div>
+                            <small class="text-success">Owed to them</small>
+                        {% elif balance < 0 %}
+                            <div class="h4 fw-bold text-danger">-${{ balance|abs_value|floatformat:2 }}</div>
+                            <small class="text-danger">They owe</small>
+                        {% else %}
+                            <div class="h4 fw-bold text-muted">$0.00</div>
+                            <small class="text-muted">Settled</small>
+                        {% endif %}
+                    </div>
+                </div>
 
-    <div class="col-md-6">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body text-center">
-                <h6 class="card-title text-muted">Paid Out</h6>
-                {% with total_paid=paid_expenses|length %}
-                    <div class="h2 fw-bold">{{ paid_expenses.count }} expense{{ paid_expenses.count|pluralize }}</div>
-                    <p class="text-muted">Click to see details</p>
-                {% endwith %}
+                <div class="alert {% if balance > 0 %}alert-success{% elif balance < 0 %}alert-danger{% else %}alert-secondary{% endif %} mb-0">
+                    {% if balance > 0 %}
+                        <strong>{{ person.name }} is a lender.</strong> They paid ${{ total_paid|floatformat:2 }}, but their fair share was only ${{ fair_share|floatformat:2 }}, so they're owed ${{ balance|floatformat:2 }}.
+                    {% elif balance < 0 %}
+                        <strong>{{ person.name }} is a borrower.</strong> Their fair share was ${{ fair_share|floatformat:2 }}, but they only paid ${{ total_paid|floatformat:2 }}, so they owe ${{ balance|abs_value|floatformat:2 }}.
+                    {% else %}
+                        <strong>All settled!</strong> {{ person.name }} paid exactly their fair share.
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Expenses -->
 <div class="row">
     <div class="col-lg-12">
         <div class="card">
@@ -55,8 +69,8 @@
             <div class="card-body">
                 {% if paid_expenses or participated_expenses %}
                 <div class="list-group">
-                    <h6 class="mb-3 text-muted">💰 Paid by {{ person.name }}:</h6>
                     {% if paid_expenses %}
+                    <h6 class="mb-3 text-muted">💰 Paid by {{ person.name }}:</h6>
                     {% for expense in paid_expenses %}
                     <div class="list-group-item">
                         <div class="d-flex justify-content-between align-items-start">
@@ -75,8 +89,8 @@
                     <p class="text-muted">No expenses paid.</p>
                     {% endif %}
 
-                    <h6 class="mb-3 text-muted mt-4">📋 Participated in:</h6>
                     {% if participated_expenses %}
+                    <h6 class="mb-3 text-muted mt-4">📋 Participated in:</h6>
                     {% for participation in participated_expenses %}
                     <div class="list-group-item">
                         <div class="d-flex justify-content-between align-items-start">
@@ -91,8 +105,6 @@
                         </div>
                     </div>
                     {% endfor %}
-                    {% else %}
-                    <p class="text-muted">Not involved in any expenses.</p>
                     {% endif %}
                 </div>
                 {% else %}
