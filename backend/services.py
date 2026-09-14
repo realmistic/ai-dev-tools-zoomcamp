@@ -74,13 +74,15 @@ def calculate_settlement(group_id: int) -> List[Dict]:
         )
 
         # Update balances
-        creditors[creditors_idx] = (creditor_id, creditor_balance - amount)
-        debtors[debtors_idx] = (debtor_id, debtor_balance + amount)
+        new_creditor_bal = creditor_balance - amount
+        new_debtor_bal = debtor_balance + amount
+        creditors[creditors_idx] = (creditor_id, new_creditor_bal)
+        debtors[debtors_idx] = (debtor_id, new_debtor_bal)
 
-        # Move to next if current is settled
-        if creditors[creditors_idx][1] < Decimal("0.01"):
+        # Move to next if current is settled (within tolerance)
+        if abs(new_creditor_bal) < Decimal("0.01"):
             creditors_idx += 1
-        if debtors[debtors_idx][1] > Decimal("-0.01"):
+        if abs(new_debtor_bal) < Decimal("0.01"):
             debtors_idx += 1
 
     return settlements
