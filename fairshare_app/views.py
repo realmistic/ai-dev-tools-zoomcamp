@@ -103,7 +103,7 @@ def add_expense(request, group_id):
 
 
 def person_detail(request, group_id, person_id):
-    """View person's expenses and balance."""
+    """View person's expenses and balance (Splitwise-style)."""
     from decimal import Decimal
 
     group = get_object_or_404(Group, id=group_id)
@@ -115,18 +115,20 @@ def person_detail(request, group_id, person_id):
         expense__group=group
     ).select_related('expense')
 
-    # Calculate balances and breakdown
-    balances = calculate_balances(group)
-    person_balance = balances.get(person.id, 0)
-
     # Calculate what they paid
     total_paid = sum(expense.amount for expense in paid_expenses) or Decimal('0.00')
 
-    # Calculate fair share
-    all_expenses = group.expenses.all()
-    total_expenses = sum(e.amount for e in all_expenses) or Decimal('0.00')
-    num_people = group.people.count()
-    fair_share = total_expenses / num_people if num_people > 0 else Decimal('0.00')
+    # Calculate their share: sum of (expense / num_participants) for each expense they participated in
+    total_share = Decimal('0.00')
+    for participation in participated_expenses:
+        expense = participation.expense
+        num_participants = expense.participants.count()
+        if num_participants > 0:
+            share_of_expense = expense.amount / num_participants
+            total_share += share_of_expense
+
+    # Balance: positive = owed to them, negative = they owe
+    balance = total_paid - total_share
 
     context = {
         'group': group,
@@ -134,7 +136,7 @@ def person_detail(request, group_id, person_id):
         'paid_expenses': paid_expenses,
         'participated_expenses': participated_expenses,
         'total_paid': total_paid,
-        'fair_share': fair_share,
-        'balance': person_balance,
+        'total_share': total_share,
+        'balance': balance,
     }
     return render(request, 'fairshare_app/person_detail.html', context)

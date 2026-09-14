@@ -14,7 +14,7 @@
     </div>
 </div>
 
-<!-- Balance Breakdown -->
+<!-- Balance Breakdown (Splitwise style) -->
 <div class="row mb-4">
     <div class="col-lg-8">
         <div class="card border-0 shadow-sm">
@@ -23,12 +23,12 @@
                 
                 <div class="row mb-3">
                     <div class="col-md-4 text-center">
-                        <small class="d-block text-muted mb-1">Paid</small>
-                        <div class="h4 fw-bold">${{ total_paid|floatformat:2 }}</div>
+                        <small class="d-block text-muted mb-1">Paid Out</small>
+                        <div class="h4 fw-bold text-info">${{ total_paid|floatformat:2 }}</div>
                     </div>
                     <div class="col-md-4 text-center">
-                        <small class="d-block text-muted mb-1">Fair Share</small>
-                        <div class="h4 fw-bold">${{ fair_share|floatformat:2 }}</div>
+                        <small class="d-block text-muted mb-1">You Owe (Share)</small>
+                        <div class="h4 fw-bold text-warning">${{ total_share|floatformat:2 }}</div>
                     </div>
                     <div class="col-md-4 text-center">
                         <small class="d-block text-muted mb-1">Balance</small>
@@ -36,7 +36,7 @@
                             <div class="h4 fw-bold text-success">+${{ balance|floatformat:2 }}</div>
                             <small class="text-success">Owed to them</small>
                         {% elif balance < 0 %}
-                            <div class="h4 fw-bold text-danger">-${{ balance|abs_value|floatformat:2 }}</div>
+                            <div class="h4 fw-bold text-danger">${{ balance|floatformat:2 }}</div>
                             <small class="text-danger">They owe</small>
                         {% else %}
                             <div class="h4 fw-bold text-muted">$0.00</div>
@@ -47,11 +47,11 @@
 
                 <div class="alert {% if balance > 0 %}alert-success{% elif balance < 0 %}alert-danger{% else %}alert-secondary{% endif %} mb-0">
                     {% if balance > 0 %}
-                        <strong>{{ person.name }} is a lender.</strong> They paid ${{ total_paid|floatformat:2 }}, but their fair share was only ${{ fair_share|floatformat:2 }}, so they're owed ${{ balance|floatformat:2 }}.
+                        <strong>{{ person.name }} is owed money.</strong> They paid ${{ total_paid|floatformat:2 }} but only owe ${{ total_share|floatformat:2 }}, so they're owed ${{ balance|floatformat:2 }}.
                     {% elif balance < 0 %}
-                        <strong>{{ person.name }} is a borrower.</strong> Their fair share was ${{ fair_share|floatformat:2 }}, but they only paid ${{ total_paid|floatformat:2 }}, so they owe ${{ balance|abs_value|floatformat:2 }}.
+                        <strong>{{ person.name }} owes money.</strong> They owe ${{ total_share|floatformat:2 }} but only paid ${{ total_paid|floatformat:2 }}, so they owe ${{ balance|abs_value|floatformat:2 }}.
                     {% else %}
-                        <strong>All settled!</strong> {{ person.name }} paid exactly their fair share.
+                        <strong>All settled!</strong> {{ person.name }} paid exactly what they owed.
                     {% endif %}
                 </div>
             </div>
@@ -75,7 +75,7 @@
                     <div class="list-group-item">
                         <div class="d-flex justify-content-between align-items-start">
                             <div>
-                                <strong class="text-success">${{ expense.amount|floatformat:2 }}</strong> — {{ expense.description|default:"(no description)" }}
+                                <strong class="text-info">${{ expense.amount|floatformat:2 }}</strong> — {{ expense.description|default:"(no description)" }}
                                 <br>
                                 <small class="text-muted">
                                     Split among: {{ expense.participants.all|join:", " }}
@@ -95,10 +95,11 @@
                     <div class="list-group-item">
                         <div class="d-flex justify-content-between align-items-start">
                             <div>
-                                <strong class="text-info">${{ participation.expense.amount|floatformat:2 }}</strong> — {{ participation.expense.description|default:"(no description)" }}
+                                <strong class="text-warning">${{ participation.expense.amount|floatformat:2 }}</strong> — {{ participation.expense.description|default:"(no description)" }}
                                 <br>
                                 <small class="text-muted">
                                     Paid by: <strong>{{ participation.expense.who_paid.name }}</strong>
+                                    ({{ participation.expense.participants.all|length }} people split)
                                 </small>
                             </div>
                             <small class="text-muted">{{ participation.expense.created_at|date:"M d, Y" }}</small>
