@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}{{ group.trip_name }} - FairShare{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1>{{ group.trip_name }}</h1>
+        <p class="text-muted">Created {{ group.created_at|date:"M d, Y" }}</p>
+    </div>
+    <div class="col-auto">
+        <a href="{% url 'add_person' group.id %}" class="btn btn-success">+ Add Person</a>
+        <a href="{% url 'add_expense' group.id %}" class="btn btn-info">+ Add Expense</a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- People & Expenses Section -->
+    <div class="col-lg-6 mb-4">
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">People ({{ people.count }})</h5>
+            </div>
+            <div class="card-body">
+                {% if people %}
+                <ul class="list-group">
+                    {% for person in people %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        {{ person.name }}
+                        {% if balances %}
+                        <span class="badge {% if balances|get_item:person.id > 0 %}bg-success{% else %}bg-danger{% endif %}">
+                            {% if balances|get_item:person.id > 0 %}
+                                +${{ balances|get_item:person.id|floatformat:2 }}
+                            {% else %}
+                                -${{ balances|get_item:person.id|abs|floatformat:2 }}
+                            {% endif %}
+                        </span>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted">No people added yet.</p>
+                {% endif %}
+                <a href="{% url 'add_person' group.id %}" class="btn btn-sm btn-success mt-3">Add Person</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Expenses ({{ expenses.count }})</h5>
+            </div>
+            <div class="card-body">
+                {% if expenses %}
+                <div class="list-group">
+                    {% for expense in expenses %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <strong>{{ expense.who_paid.name }}</strong> paid <strong>${{ expense.amount|floatformat:2 }}</strong>
+                                {% if expense.description %}
+                                    for <em>{{ expense.description }}</em>
+                                {% endif %}
+                            </div>
+                            <small class="text-muted">{{ expense.created_at|date:"M d" }}</small>
+                        </div>
+                        <small class="text-muted d-block mt-1">
+                            Participants: {{ expense.participants.all|join:", " }}
+                        </small>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">No expenses recorded yet.</p>
+                {% endif %}
+                <a href="{% url 'add_expense' group.id %}" class="btn btn-sm btn-info mt-3">Add Expense</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settlement & Balances Section -->
+    <div class="col-lg-6">
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Balances</h5>
+            </div>
+            <div class="card-body">
+                {% if balances %}
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Person</th>
+                            <th class="text-end">Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for person in people %}
+                        <tr>
+                            <td>{{ person.name }}</td>
+                            <td class="text-end">
+                                {% if balances|get_item:person.id > 0 %}
+                                    <span class="text-success fw-bold">+${{ balances|get_item:person.id|floatformat:2 }}</span>
+                                {% elif balances|get_item:person.id < 0 %}
+                                    <span class="text-danger fw-bold">-${{ balances|get_item:person.id|abs|floatformat:2 }}</span>
+                                {% else %}
+                                    <span class="text-muted">$0.00</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-muted text-center py-4">Add expenses to see balances.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Settlement Plan</h5>
+            </div>
+            <div class="card-body">
+                {% if settlement %}
+                <div class="settlement-table">
+                    {% for s in settlement %}
+                    <div class="settlement-item">
+                        <div>
+                            <strong>{{ s.from_name }}</strong>
+                            <span class="settlement-arrow">→</span>
+                            <strong>{{ s.to_name }}</strong>
+                        </div>
+                        <div class="settlement-amount">${{ s.amount|floatformat:2 }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-4">
+                    {% if people %}
+                        Add expenses to see the settlement plan.
+                    {% else %}
+                        Add people and expenses to see the settlement plan.
+                    {% endif %}
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% load custom_filters %}

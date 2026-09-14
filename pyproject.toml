@@ -1,0 +1,10 @@
+[project]
+name = "ai-dev-tools-zoomcamp"
+version = "0.1.0"
+description = "Coursework for AI Dev Tools Zoomcamp 2026"
+requires-python = ">=3.9"
+dependencies = [
+    "django>=4.2",
+]
+
+[tool.uv]

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Add Person - FairShare{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <h1 class="mb-4">Add Person to {{ group.trip_name }}</h1>
+        
+        <form method="post" class="card p-4">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="id_name" class="form-label">Person's Name</label>
+                {{ form.name }}
+                {% if form.name.errors %}
+                <div class="invalid-feedback d-block">
+                    {{ form.name.errors }}
+                </div>
+                {% endif %}
+            </div>
+            <button type="submit" class="btn btn-success w-100">Add Person</button>
+            <a href="{% url 'group_detail' group.id %}" class="btn btn-secondary w-100 mt-2">Cancel</a>
+        </form>
+
+        <div class="card mt-4 bg-light">
+            <div class="card-body">
+                <h6 class="card-title">Current People:</h6>
+                {% if group.people.all %}
+                <ul class="mb-0">
+                    {% for person in group.people.all %}
+                    <li>{{ person.name }}</li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="mb-0 text-muted">No people added yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

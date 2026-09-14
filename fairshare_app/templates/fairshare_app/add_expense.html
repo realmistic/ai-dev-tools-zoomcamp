@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Add Expense - FairShare{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <h1 class="mb-4">Add Expense to {{ group.trip_name }}</h1>
+        
+        <form method="post" class="card p-4">
+            {% csrf_token %}
+            
+            <div class="mb-3">
+                <label for="id_who_paid" class="form-label">Who Paid?</label>
+                {{ form.who_paid }}
+                {% if form.who_paid.errors %}
+                <div class="invalid-feedback d-block">
+                    {{ form.who_paid.errors }}
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <label for="id_amount" class="form-label">Amount ($)</label>
+                {{ form.amount }}
+                {% if form.amount.errors %}
+                <div class="invalid-feedback d-block">
+                    {{ form.amount.errors }}
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <label for="id_description" class="form-label">Description</label>
+                {{ form.description }}
+                {% if form.description.errors %}
+                <div class="invalid-feedback d-block">
+                    {{ form.description.errors }}
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Who Was Involved?</label>
+                <div class="border p-3 rounded bg-light">
+                    {{ form.people_involved }}
+                    {% if form.people_involved.errors %}
+                    <div class="invalid-feedback d-block">
+                        {{ form.people_involved.errors }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-info w-100">Add Expense</button>
+            <a href="{% url 'group_detail' group.id %}" class="btn btn-secondary w-100 mt-2">Cancel</a>
+        </form>
+    </div>
+</div>
+{% endblock %}
