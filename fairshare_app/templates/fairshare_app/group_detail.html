@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load custom_filters %}
 
 {% block title %}{{ group.trip_name }} - FairShare{% endblock %}
 
@@ -32,7 +33,7 @@
                             {% if balances|get_item:person.id > 0 %}
                                 +${{ balances|get_item:person.id|floatformat:2 }}
                             {% else %}
-                                -${{ balances|get_item:person.id|abs|floatformat:2 }}
+                                -${{ balances|get_item:person.id|abs_value|floatformat:2 }}
                             {% endif %}
                         </span>
                         {% endif %}
@@ -101,7 +102,7 @@
                                 {% if balances|get_item:person.id > 0 %}
                                     <span class="text-success fw-bold">+${{ balances|get_item:person.id|floatformat:2 }}</span>
                                 {% elif balances|get_item:person.id < 0 %}
-                                    <span class="text-danger fw-bold">-${{ balances|get_item:person.id|abs|floatformat:2 }}</span>
+                                    <span class="text-danger fw-bold">-${{ balances|get_item:person.id|abs_value|floatformat:2 }}</span>
                                 {% else %}
                                     <span class="text-muted">$0.00</span>
                                 {% endif %}
@@ -148,5 +149,3 @@
     </div>
 </div>
 {% endblock %}
-
-{% load custom_filters %}
