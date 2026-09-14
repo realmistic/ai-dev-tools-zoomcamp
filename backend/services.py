@@ -69,7 +69,7 @@ def calculate_settlement(group_id: int) -> List[Dict]:
                 "to_person_id": creditor_id,
                 "from_person_name": people[debtor_id]["name"],
                 "to_person_name": people[creditor_id]["name"],
-                "amount": amount,
+                "amount": amount.quantize(Decimal("0.01")),  # Round to 2 decimal places
             }
         )
 
