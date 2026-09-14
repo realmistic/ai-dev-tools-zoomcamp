@@ -1,0 +1,329 @@
+openapi: 3.0.0
+info:
+  title: FairShare API
+  description: Split expenses fairly among friends
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8001
+    description: Development server
+
+paths:
+  /groups:
+    post:
+      summary: Create a new group/trip
+      tags:
+        - Groups
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                trip_name:
+                  type: string
+                  example: "Vegas 2026"
+              required:
+                - trip_name
+      responses:
+        '201':
+          description: Group created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupDetail'
+        '400':
+          description: Invalid input
+
+  /groups/{group_id}:
+    get:
+      summary: Get group details with people, expenses, balances, and settlement
+      tags:
+        - Groups
+      parameters:
+        - name: group_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Group details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupDetail'
+        '404':
+          description: Group not found
+
+  /groups/{group_id}/people:
+    post:
+      summary: Add a person to a group
+      tags:
+        - People
+      parameters:
+        - name: group_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "Alice"
+              required:
+                - name
+      responses:
+        '201':
+          description: Person added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Person'
+        '404':
+          description: Group not found
+        '400':
+          description: Invalid input
+
+  /groups/{group_id}/people/{person_id}:
+    get:
+      summary: Get person's details and balance
+      tags:
+        - People
+      parameters:
+        - name: group_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: person_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Person details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonDetail'
+        '404':
+          description: Not found
+
+  /groups/{group_id}/expenses:
+    post:
+      summary: Add an expense to a group
+      tags:
+        - Expenses
+      parameters:
+        - name: group_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                who_paid:
+                  type: integer
+                  description: Person ID who paid
+                amount:
+                  type: number
+                  format: decimal
+                  example: 100.50
+                description:
+                  type: string
+                  example: "Hotel"
+                people_involved:
+                  type: array
+                  items:
+                    type: integer
+                  description: List of person IDs involved
+              required:
+                - who_paid
+                - amount
+                - people_involved
+      responses:
+        '201':
+          description: Expense added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+        '404':
+          description: Group not found
+        '400':
+          description: Invalid input
+
+  /groups/{group_id}/settlement:
+    get:
+      summary: Get the settlement plan (who pays whom)
+      tags:
+        - Settlement
+      parameters:
+        - name: group_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Settlement plan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  settlements:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Settlement'
+        '404':
+          description: Group not found
+
+components:
+  schemas:
+    Person:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        group_id:
+          type: integer
+      required:
+        - id
+        - name
+        - group_id
+
+    Expense:
+      type: object
+      properties:
+        id:
+          type: integer
+        group_id:
+          type: integer
+        who_paid:
+          $ref: '#/components/schemas/Person'
+        amount:
+          type: number
+          format: decimal
+        description:
+          type: string
+        people_involved:
+          type: array
+          items:
+            $ref: '#/components/schemas/Person'
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - group_id
+        - who_paid
+        - amount
+        - people_involved
+
+    Settlement:
+      type: object
+      properties:
+        from_person_id:
+          type: integer
+        to_person_id:
+          type: integer
+        from_person_name:
+          type: string
+        to_person_name:
+          type: string
+        amount:
+          type: number
+          format: decimal
+      required:
+        - from_person_id
+        - to_person_id
+        - from_person_name
+        - to_person_name
+        - amount
+
+    PersonDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        group_id:
+          type: integer
+        total_paid:
+          type: number
+          format: decimal
+        total_share:
+          type: number
+          format: decimal
+        balance:
+          type: number
+          format: decimal
+        paid_expenses:
+          type: array
+          items:
+            $ref: '#/components/schemas/Expense'
+        participated_expenses:
+          type: array
+          items:
+            $ref: '#/components/schemas/Expense'
+      required:
+        - id
+        - name
+        - group_id
+        - total_paid
+        - total_share
+        - balance
+
+    GroupDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        trip_name:
+          type: string
+        people:
+          type: array
+          items:
+            $ref: '#/components/schemas/Person'
+        expenses:
+          type: array
+          items:
+            $ref: '#/components/schemas/Expense'
+        balances:
+          type: object
+          description: "Person ID -> balance (decimal)"
+          additionalProperties:
+            type: number
+            format: decimal
+        settlement:
+          type: array
+          items:
+            $ref: '#/components/schemas/Settlement'
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - trip_name
+        - people
+        - expenses
+        - balances
+        - settlement
