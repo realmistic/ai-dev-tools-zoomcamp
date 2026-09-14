@@ -79,10 +79,7 @@ def get_group_detail(group_id: int) -> GroupDetail:
                 who_paid=e["who_paid"],
                 amount=Decimal(str(e["amount"])),
                 description=e["description"],
-                people_involved=[
-                    Person(id=pid, name=db.get_person(pid)["name"], group_id=group_id)
-                    for pid in e["people_involved"]
-                ],
+                people_involved=e["people_involved"],
                 created_at=e["created_at"],
             )
             for e in expenses
@@ -157,10 +154,7 @@ async def get_person(group_id: int, person_id: int):
             who_paid=e["who_paid"],
             amount=Decimal(str(e["amount"])),
             description=e["description"],
-            people_involved=[
-                Person(id=pid, name=db.get_person(pid)["name"], group_id=group_id)
-                for pid in e["people_involved"]
-            ],
+            people_involved=e["people_involved"],
             created_at=e["created_at"],
         )
         for e in expenses
@@ -175,10 +169,7 @@ async def get_person(group_id: int, person_id: int):
             who_paid=e["who_paid"],
             amount=Decimal(str(e["amount"])),
             description=e["description"],
-            people_involved=[
-                Person(id=pid, name=db.get_person(pid)["name"], group_id=group_id)
-                for pid in e["people_involved"]
-            ],
+            people_involved=e["people_involved"],
             created_at=e["created_at"],
         )
         for e in expenses
@@ -227,10 +218,7 @@ async def add_expense(group_id: int, expense: ExpenseBase):
         who_paid=expense_data["who_paid"],
         amount=Decimal(str(expense_data["amount"])),
         description=expense_data["description"],
-        people_involved=[
-            Person(id=pid, name=db.get_person(pid)["name"], group_id=group_id)
-            for pid in expense_data["people_involved"]
-        ],
+        people_involved=expense_data["people_involved"],
         created_at=expense_data["created_at"],
     )
 

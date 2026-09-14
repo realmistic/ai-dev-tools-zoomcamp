@@ -27,7 +27,7 @@ class Expense(BaseModel):
     who_paid: int
     amount: Decimal = Field(..., decimal_places=2)
     description: str = ""
-    people_involved: List["Person"]  # Person objects for output
+    people_involved: List[int]  # Just IDs for simplicity
     created_at: datetime
 
 
