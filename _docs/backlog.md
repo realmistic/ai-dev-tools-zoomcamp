@@ -1,41 +1,50 @@
 # Backlog — FairShare
 
-Derived from `_docs/plan.md`. Ordered by dependency: each task builds on the
+Derived from `_docs/specs.md`. Ordered by dependency: each task builds on the
 previous, and the app is working after each milestone.
 
-## Milestone 1 — API skeleton and models
+## Milestone 1 — Django skeleton and models
 
-### Task 1 — FastAPI skeleton and health endpoint
-Create a FastAPI app with a `/health/` endpoint returning `{"status": "ok"}`.
-Run with `uvicorn` and confirm tests pass.
+### Task 1 — Django project and app skeleton
+Install Django, create project `fairshare` and app `fairshare_app`. Register
+`fairshare_app` in `INSTALLED_APPS` in `fairshare/settings.py`. Add a
+`/health/` view returning `{"status": "ok"}`. Confirm
+`python manage.py runserver` serves it and `python manage.py test` passes with
+one test asserting the health view returns 200.
 
-**Done when:** `uvicorn main:app --reload` serves `/health/` and
-`pytest test_health.py` is green.
+**Done when:** server starts, health endpoint responds, test suite green.
 
 ### Task 2 — Models: Person, Expense, Group
-Models in `fairshare_api/models.py`:
-- `Person`: name, paid (total paid), owes (total share), balance (paid - owes)
-- `Expense`: who_paid (Person), amount, description, people_involved (list of Person)
-- `Group`: list of people, list of expenses, metadata (created_at, trip_name)
+Django models in `fairshare_app/models.py`:
+- `Person`: name, created_at
+- `Expense`: who_paid (FK to Person), amount, description, created_at
+- `ExpenseParticipant`: expense (FK), person (FK), share (computed)
+- `Group`: trip_name, people (M2M), expenses (M2M), created_at
 
-All money in `Decimal` to the cent. Add test fixtures for a 2-person and 3-person trip.
+All money in `DecimalField(max_digits=10, decimal_places=2)`. Add test fixtures
+for a 2-person and 3-person trip.
 
-**Done when:** models instantiate, fixtures round-trip JSON cleanly.
+**Done when:** migrations apply cleanly, models round-trip in tests.
 
 ## Milestone 2 — Settlement logic (core algorithm)
 
 ### Task 3 — Calculate balances
-Given a Group and its expenses, compute per-person balance:
+Service function `calculate_balances(group)` computes per-person balance:
 - Paid: sum of expenses where person_paid
 - Share: (sum of all expenses) / (number of people) [equally divided for HW2]
 - Balance: paid - share
+
+Return dict: `{person_id: balance, ...}`
 
 **Done when:** test with known trip (Alice pays $60 hotel for 3 people, Bob pays
 $30 meals for 2 people) produces correct balances.
 
 ### Task 4 — Settlement plan (greedy algorithm)
-Given balances, compute minimal transactions: who pays whom and how much.
-Greedy: highest creditor receives from highest debtor first.
+Service function `calculate_settlement(group)` computes minimal transactions:
+who pays whom and how much. Greedy: highest creditor receives from highest
+debtor first.
+
+Return list of dicts: `[{"from": person_id, "to": person_id, "amount": decimal}, ...]`
 
 **Done when:** test cases:
 - 2 people: Alice paid $100, Bob paid $0 → Bob pays Alice $50
@@ -43,91 +52,83 @@ Greedy: highest creditor receives from highest debtor first.
   each pay Alice $30
 - Complex: mixed payments and multiple debtors → produces a correct settlement
 
-### Task 5 — API endpoints for Group operations
-POST `/groups/` (create group with name and people)
-POST `/groups/{id}/expenses` (add expense)
-GET `/groups/{id}` (people, expenses, balances, settlement plan)
-GET `/groups/{id}/settlement` (settlement plan only)
+## Milestone 3 — Views and templates (frontend)
 
-**Done when:** endpoints exist, return 200, accept/return correct JSON.
+### Task 5 — Home and group creation view
+View: `create_group()` GET/POST. Template: form for trip name and initial people
+(comma-separated names). Creates a Group and redirects to group detail.
 
-## Milestone 3 — Frontend (React/Next)
+**Done when:** form accepts input, creates group, redirects to group page.
 
-### Task 6 — Frontend skeleton
-React or Next.js app with a simple layout: header, navigation, empty pages for
-"People," "Expenses," "Settlement."
+### Task 6 — Group detail view (dashboard)
+View: `group_detail(group_id)` GET. Template: displays people list, expenses
+list, balances table, settlement plan. All read-only for now.
 
-**Done when:** app starts, pages load, no errors.
+**Done when:** all data displays correctly, no errors.
 
-### Task 7 — People page (add and list)
-Form to add a person (name), list of people added. Calls POST `/groups/` and
-GET `/groups/{id}`.
+### Task 7 — Add person view
+View: `add_person(group_id)` GET/POST. Form: name input. Adds person to group.
+Redirects to group detail.
 
-**Done when:** add a person, see it in the list, refresh persists.
+**Done when:** form works, person is added, group detail updates.
 
-### Task 8 — Expenses page (add and list)
-Form to add an expense (who paid, amount, description, who was involved).
-List of expenses. Calls POST `/groups/{id}/expenses`.
+### Task 8 — Add expense view
+View: `add_expense(group_id)` GET/POST. Form: who_paid (dropdown), amount,
+description, people_involved (checkboxes). Adds expense, calculates balances
+and settlement. Redirects to group detail.
 
-**Done when:** add expense, list updates; expense data reaches the API.
+**Done when:** form works, expense is added, balances and settlement update.
 
-### Task 9 — Settlement page
-Show balances and settlement plan. Calls GET `/groups/{id}/settlement`.
-Clear, readable output: "Bob pays Alice $30."
+### Task 9 — Styling and UI polish
+Add CSS (or use a CSS framework like Bootstrap/Tailwind) for readability.
+Make forms and tables look clean. Responsive layout.
 
-**Done when:** settlement page shows correct calculation after adding expenses.
+**Done when:** UI is usable and looks reasonable on desktop.
 
-## Milestone 4 — OpenAPI and integration tests
+## Milestone 4 — Testing and integration
 
-### Task 10 — Write OpenAPI contract
-Document all endpoints (people, expenses, settlement) in `openapi.yaml` with
-request/response schemas. Use it as the contract for both API and frontend.
+### Task 10 — Unit tests for settlement logic
+Test: balance calculation and settlement plan generation. Fixtures for 2-person,
+3-person, complex multi-expense trips.
 
-**Done when:** `openapi.yaml` matches API behavior; API tests pass against it.
+**Done when:** all settlement test cases pass.
 
 ### Task 11 — Integration tests (end-to-end)
-Test: create group, add people, add expenses, fetch settlement. Verify the
-settlement is correct.
+Test: create group, add people, add expenses, fetch settlement. Use Django's
+test client. Verify views and data flow.
 
-**Done when:** test covers the main happy path and known edge cases.
+**Done when:** end-to-end test covers main happy path.
 
-### Task 12 — Frontend component tests
-Test: form submission, balance display, settlement rendering.
+### Task 12 — Form validation tests
+Test: form rejects negative amounts, empty names, invalid input.
 
-**Done when:** `npm test` or `pytest` passes.
+**Done when:** invalid input is caught and shown in form errors.
 
 ## Milestone 5 — Polish and deployment
 
-### Task 13 — API documentation and error handling
-Add docstrings, validate input (no negative amounts, no duplicate people names),
-return sensible 400/422 errors.
+### Task 13 — Error handling and user feedback
+Add flash messages (Django messages framework) for success/error. Handle edge
+cases (empty group, no expenses, etc.).
 
-**Done when:** `/docs` (Swagger UI) is readable; invalid input is rejected.
+**Done when:** user gets clear feedback on all actions.
 
-### Task 14 — Responsive UI
-Ensure frontend works on mobile (if using plain React, add basic media queries;
-if using Next.js, leverage built-in responsive defaults).
-
-**Done when:** pages are readable on desktop and mobile.
-
-### Task 15 — Deploy API and frontend
-Deploy FastAPI to Render/Railway. Deploy frontend to Vercel or the same platform.
-
-**Done when:** app is live at a public URL.
-
-### Task 16 — Write ai-usage-report.md
+### Task 14 — Write ai-usage-report.md
 Reflect: which parts did the AI help with? Where did you override it? What took
 longest?
 
 **Done when:** report is written and committed.
 
+### Task 15 — Deploy to Render or Railway
+Set up environment variables, database, static files. Deploy app.
+
+**Done when:** app is live at a public URL.
+
 ## Backlog tail (Module 3+)
 
 - **Persistent groups and history:** multi-user, groups survive past the trip.
 - **Editing and deletion:** allow changes to people and expenses.
-- **Payments and receipts:** track actual settlements (Alice venmos Bob $30).
+- **Payments and receipts:** track actual settlements.
 - **Multiple currency:** detect and convert if needed.
-- **Shared links:** invite friends to a group without needing an account.
+- **Shared links:** invite friends without needing an account.
 - **Recurring splits:** monthly rent, regular expenses.
 - **Authentication:** users own their groups.
-- **Postgres and production database:** swap SQLite for production.

@@ -43,7 +43,8 @@ At the end, show:
 
 ### F4. UI: add people, add expense, view balances, view settlement
 
-Four pages. Simple forms and tables. No drag-drop, no real-time, no editing
+Four pages (Django templates with forms): add people form, add expense form,
+balances table, settlement plan display. No drag-drop, no real-time, no editing
 after the fact. Create and read only.
 
 ## Non-goals for Module 2
@@ -63,23 +64,22 @@ Deliberately excluded:
 
 | Decision | Choice | Why |
 | --- | --- | --- |
-| Framework | FastAPI (backend) + React/Next (frontend) | Module 2 requirement; separation of concerns |
-| API | OpenAPI contract first | Truth for both frontend and backend, testable |
+| Framework | Django full-stack | Templates for frontend, views for backend; follows Module 1 pattern |
 | Database | SQLite in development | Swap for Postgres in Module 3 |
 | Settlement logic | Greedy algorithm | Minimal transactions: highest balance pays/receives first |
-| Frontend | React or Next.js | Modern, component-based, easy to test |
+| Frontend | Django templates + forms | Server-rendered, simple, testable with Django's test client |
 | Deployment | Render or Railway | Module 3 scope |
 
 ## Repository layout
 
 ```text
-_docs/plan.md              this specification
+_docs/specs.md             this specification
 _docs/backlog.md           groomed task list
-fairshare_api/             FastAPI app (main.py, models, routes)
-fairshare_api/tests/       unit tests for API and settlement logic
-frontend/                  React app (components, pages, API client)
-frontend/tests/            component and integration tests
-openapi.yaml               OpenAPI contract (source of truth)
+fairshare/                 Django project (settings, urls, wsgi)
+fairshare_app/             Django app (models, views, forms, templates)
+fairshare_app/tests/       unit and integration tests
+fairshare_app/templates/   HTML templates
+static/                    CSS, JavaScript
 docs/
   ai-usage-report.md       how AI helped (or didn't)
 ```

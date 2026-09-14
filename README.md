@@ -4,7 +4,7 @@ Coursework for the AI Dev Tools Zoomcamp 2026 cohort.
 
 ## FairShare (HW2)
 
-A lightweight full-stack app to split expenses among friends and settle debts fairly.
+A Django app to split expenses among friends and settle debts fairly.
 
 **The idea:** A group on a trip. One person pays for the hotel, another for meals, a third for gas. At the end, calculate who paid what, who owes whom, and the minimal settlement plan.
 
@@ -12,10 +12,9 @@ A lightweight full-stack app to split expenses among friends and settle debts fa
 - Add people and expenses
 - Calculate per-person balances (paid vs. owed)
 - Generate a minimal settlement plan (greedy algorithm)
-- FastAPI backend + React/Next frontend
-- OpenAPI contract as the source of truth
+- Django full-stack (templates + views)
 
-See `_docs/plan.md` for the full specification and `_docs/backlog.md` for the task list.
+See `_docs/specs.md` for the full specification and `_docs/backlog.md` for the task list.
 
 ## Setup
 
@@ -23,27 +22,23 @@ See `_docs/plan.md` for the full specification and `_docs/backlog.md` for the ta
 # Install dependencies
 uv sync
 
-# Start the FastAPI backend
-uv run uvicorn fairshare_api.main:app --reload
+# Create and run migrations
+uv run python manage.py migrate
 
-# In another terminal, start the frontend
-cd frontend
-npm install
-npm run dev
+# Start the development server
+uv run python manage.py runserver
 ```
 
-Backend runs at `http://127.0.0.1:8000` | Frontend at `http://127.0.0.1:3000`
-
-API docs (Swagger) at `http://127.0.0.1:8000/docs`
+Visit `http://127.0.0.1:8000/` to access the app.
 
 ## Testing
 
 ```bash
-# Backend tests
-uv run pytest fairshare_api/tests/
+# Run all tests
+uv run python manage.py test
 
-# Frontend tests (if using vitest or jest)
-cd frontend && npm test
+# Run tests with verbose output
+uv run python manage.py test --verbosity=2
 ```
 
 ## Commands (quick reference)
@@ -51,24 +46,22 @@ cd frontend && npm test
 | Command | What it does |
 | --- | --- |
 | `uv sync` | Install/sync dependencies |
-| `uv run uvicorn fairshare_api.main:app --reload` | Start FastAPI server |
-| `cd frontend && npm run dev` | Start frontend dev server |
-| `uv run pytest fairshare_api/tests/` | Run backend tests |
-| `cd frontend && npm test` | Run frontend tests |
+| `uv run python manage.py migrate` | Apply database migrations |
+| `uv run python manage.py runserver` | Start dev server (port 8000) |
+| `uv run python manage.py test` | Run test suite |
+| `uv run python manage.py shell` | Interactive Python shell with Django context |
 
 ## Project structure
 
 ```
 _docs/                 specification and backlog
-fairshare_api/         FastAPI app (main.py, models, routes)
-fairshare_api/tests/   unit tests
-frontend/              React/Next.js app
-frontend/tests/        component tests
-openapi.yaml           API contract
-docs/
-  ai-usage-report.md   how AI helped
+fairshare/             Django project (settings, urls, wsgi)
+fairshare_app/         Django app (models, views, forms, templates)
+fairshare_app/tests/   tests
+fairshare_app/templates/ HTML templates
+static/                CSS, JavaScript
 ```
 
 ---
 
-**Status:** Module 2 in progress. Building Tasks 1–5 (API skeleton, settlement logic, basic endpoints).
+**Status:** HW2 in progress. Building Tasks 1–4 (Django skeleton, models, settlement logic, views).
