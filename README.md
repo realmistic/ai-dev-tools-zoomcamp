@@ -2,17 +2,18 @@
 
 Coursework for the AI Dev Tools Zoomcamp 2026 cohort.
 
-## Portfolio Lens (HW1)
+## FairShare (HW2)
 
-A Django app that turns Interactive Brokers Activity Statement PDFs into trustworthy portfolio analytics and performance metrics.
+A lightweight full-stack app to split expenses among friends and settle debts fairly.
 
-**The idea:** Parse broker statements into a reconciled data model, reconstruct daily performance, benchmark against S&P 500, and export verified metrics so a coding agent (Claude Code) can answer open questions about the portfolio without guessing from a PDF.
+**The idea:** A group on a trip. One person pays for the hotel, another for meals, a third for gas. At the end, calculate who paid what, who owes whom, and the minimal settlement plan.
 
 **Features:**
-- Ingest and reconcile IBKR PDFs (acceptance tests on NAV, TWR, P&L)
-- Reconstruct daily NAV curve from trade log; time-weighted returns by period
-- Benchmark vs SPY; risk metrics (volatility, Sharpe, drawdown, beta)
-- Sector weights and contribution analysis; JSON/CSV export
+- Add people and expenses
+- Calculate per-person balances (paid vs. owed)
+- Generate a minimal settlement plan (greedy algorithm)
+- FastAPI backend + React/Next frontend
+- OpenAPI contract as the source of truth
 
 See `_docs/plan.md` for the full specification and `_docs/backlog.md` for the task list.
 
@@ -22,23 +23,27 @@ See `_docs/plan.md` for the full specification and `_docs/backlog.md` for the ta
 # Install dependencies
 uv sync
 
-# Create and run migrations
-uv run python manage.py migrate
+# Start the FastAPI backend
+uv run uvicorn fairshare_api.main:app --reload
 
-# Start the development server
-uv run python manage.py runserver
+# In another terminal, start the frontend
+cd frontend
+npm install
+npm run dev
 ```
 
-Visit `http://127.0.0.1:8000/health/` to verify the server is running.
+Backend runs at `http://127.0.0.1:8000` | Frontend at `http://127.0.0.1:3000`
+
+API docs (Swagger) at `http://127.0.0.1:8000/docs`
 
 ## Testing
 
 ```bash
-# Run all tests
-uv run python manage.py test
+# Backend tests
+uv run pytest fairshare_api/tests/
 
-# Run tests with verbose output
-uv run python manage.py test --verbosity=2
+# Frontend tests (if using vitest or jest)
+cd frontend && npm test
 ```
 
 ## Commands (quick reference)
@@ -46,24 +51,24 @@ uv run python manage.py test --verbosity=2
 | Command | What it does |
 | --- | --- |
 | `uv sync` | Install/sync dependencies |
-| `uv run python manage.py migrate` | Apply database migrations |
-| `uv run python manage.py runserver` | Start dev server (port 8000) |
-| `uv run python manage.py test` | Run test suite |
-| `uv run python manage.py shell` | Interactive Python shell with Django context |
+| `uv run uvicorn fairshare_api.main:app --reload` | Start FastAPI server |
+| `cd frontend && npm run dev` | Start frontend dev server |
+| `uv run pytest fairshare_api/tests/` | Run backend tests |
+| `cd frontend && npm test` | Run frontend tests |
 
 ## Project structure
 
 ```
 _docs/                 specification and backlog
-portfolio_lens/        Django project (settings, urls, wsgi)
-portfolio/             Django app (models, parsing, analytics, views)
-portfolio/tests/       unit and reconciliation tests
-data/
-  statements/          uploaded PDFs (gitignored)
-  fixtures/            test data (sanitized JSON)
-exports/               generated metrics (gitignored)
+fairshare_api/         FastAPI app (main.py, models, routes)
+fairshare_api/tests/   unit tests
+frontend/              React/Next.js app
+frontend/tests/        component tests
+openapi.yaml           API contract
+docs/
+  ai-usage-report.md   how AI helped
 ```
 
 ---
 
-**Status:** Module 1 scope locked. Building Tasks 1–7 (ingest, reconcile, daily NAV).
+**Status:** Module 2 in progress. Building Tasks 1–5 (API skeleton, settlement logic, basic endpoints).

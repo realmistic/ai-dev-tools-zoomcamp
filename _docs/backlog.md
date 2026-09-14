@@ -1,187 +1,133 @@
-# Backlog — Portfolio Lens
+# Backlog — FairShare
 
-Derived from `_docs/plan.md`. Ordered by dependency: each task is small enough
-to implement and verify in one sitting, and leaves the app working.
+Derived from `_docs/plan.md`. Ordered by dependency: each task builds on the
+previous, and the app is working after each milestone.
 
-Sample statement for all fixtures: `MULTI_20260101_20260904.pdf`
-(IBKR consolidated, 2026-01-01 → 2026-09-04, 79 pages).
+## Milestone 1 — API skeleton and models
 
-## Pre-extracted data and test fixtures
+### Task 1 — FastAPI skeleton and health endpoint
+Create a FastAPI app with a `/health/` endpoint returning `{"status": "ok"}`.
+Run with `uvicorn` and confirm tests pass.
 
-Once Task 3b is done, you can:
-- Extract your real MULTI PDF to JSON once: `python manage.py shell_plus` →
-  `import_statement(pdf) ; export_to_json(...)`
-- Distort for public commit: (a) select a subset of trades (e.g., 10–15 from
-  different periods), (b) scale quantities down so total portfolio is ~20k USD,
-  (c) rename symbols to different real tickers (must exist in yfinance so
-  market data tests pass), (d) keep the structure and trade dates unchanged.
-  Example: AMZN → AAPL, NVDA → MSFT, AEIS → TSLA (all real and liquid).
-- Commit the sanitized JSON as `data/fixtures/sample-portfolio.json`.
-- Tests use the fixture; anyone cloning the repo can verify the app works
-  without seeing your portfolio.
+**Done when:** `uvicorn main:app --reload` serves `/health/` and
+`pytest test_health.py` is green.
 
-## Milestone 1 — Skeleton
+### Task 2 — Models: Person, Expense, Group
+Models in `fairshare_api/models.py`:
+- `Person`: name, paid (total paid), owes (total share), balance (paid - owes)
+- `Expense`: who_paid (Person), amount, description, people_involved (list of Person)
+- `Group`: list of people, list of expenses, metadata (created_at, trip_name)
 
-### Task 1 — Django project and app skeleton
-Install Django, create project `portfolio_lens` and app `portfolio`. Register
-`portfolio` in `INSTALLED_APPS` in `portfolio_lens/settings.py`. Add a
-`/health/` view returning `{"status": "ok"}`. Confirm
-`python manage.py runserver` serves it and `python manage.py test` passes with
-one test asserting the health view returns 200.
+All money in `Decimal` to the cent. Add test fixtures for a 2-person and 3-person trip.
 
-**Done when:** server starts, health endpoint responds, test suite green.
+**Done when:** models instantiate, fixtures round-trip JSON cleanly.
 
-### Task 2 — Statement models
-Models: `Statement` (period start/end, opening NAV, closing NAV, reported TWR,
-source filename, uploaded_at), `Instrument` (symbol, description, isin,
-exchange, instrument_type, sector, industry), `Position` (statement, instrument,
-quantity, cost_price, cost_basis, close_price, value, unrealized_pl),
-`Trade` (statement, instrument, account_id, executed_at, quantity, trade_price,
-close_price, proceeds, commission, basis, realized_pl, mtm_pl, code),
-`CashFlow` (statement, date, kind ∈ deposit/withdrawal/dividend/interest/fee/
-commission, amount, instrument nullable).
+## Milestone 2 — Settlement logic (core algorithm)
 
-All money fields `DecimalField(max_digits=18, decimal_places=6)`. Migrate.
+### Task 3 — Calculate balances
+Given a Group and its expenses, compute per-person balance:
+- Paid: sum of expenses where person_paid
+- Share: (sum of all expenses) / (number of people) [equally divided for HW2]
+- Balance: paid - share
 
-**Done when:** migrations apply cleanly, models round-trip in a test.
+**Done when:** test with known trip (Alice pays $60 hotel for 3 people, Bob pays
+$30 meals for 2 people) produces correct balances.
 
-## Milestone 2 — Ingest and reconcile (F1)
+### Task 4 — Settlement plan (greedy algorithm)
+Given balances, compute minimal transactions: who pays whom and how much.
+Greedy: highest creditor receives from highest debtor first.
 
-### Task 3a — PDF text extraction
-`portfolio/parsing/extract.py`: given a PDF path, return page texts via `pypdf`
-and a single normalised document string. Strip page footers
-(`Activity Statement - ... Page: N`, `Generated: ...`).
+**Done when:** test cases:
+- 2 people: Alice paid $100, Bob paid $0 → Bob pays Alice $50
+- 3 people: Alice paid $90 (for 3), Bob paid $0, Carol paid $0 → Bob and Carol
+  each pay Alice $30
+- Complex: mixed payments and multiple debtors → produces a correct settlement
 
-**Done when:** unit test asserts 79 pages extracted and no footer text remains.
+### Task 5 — API endpoints for Group operations
+POST `/groups/` (create group with name and people)
+POST `/groups/{id}/expenses` (add expense)
+GET `/groups/{id}` (people, expenses, balances, settlement plan)
+GET `/groups/{id}/settlement` (settlement plan only)
 
-### Task 3b — Export parsed sections to JSON
-`portfolio/parsing/export_to_json.py`: given a parsed sections dict (from Task
-4), serialise it to JSON with a `version` and `exported_at` header. Reverse
-function deserialises JSON back to sections dict. This is the format for
-`data/fixtures/` and the JSON import endpoint (Task 7b).
+**Done when:** endpoints exist, return 200, accept/return correct JSON.
 
-**Done when:** round-trip test asserts sections survive dict → JSON → dict
-losslessly.
+## Milestone 3 — Frontend (React/Next)
 
-### Task 4 — Section splitter
-`portfolio/parsing/sections.py`: a state machine that splits the document into
-named sections by their header lines (Account Information, Net Asset Value,
-Change in NAV, Mark-to-Market Performance Summary, Realized & Unrealized
-Performance Summary, Cash Report, Open Positions, Trades, Dividends,
-Deposits & Withdrawals, Financial Instrument Information). Headers repeat on
-continuation pages — the splitter must concatenate rather than restart.
+### Task 6 — Frontend skeleton
+React or Next.js app with a simple layout: header, navigation, empty pages for
+"People," "Expenses," "Settlement."
 
-**Done when:** test asserts every expected section is found and Trades contains
-all rows across its ten page-spans.
+**Done when:** app starts, pages load, no errors.
 
-### Task 5 — Row parsers
-One parser per section, each returning plain dataclasses. Cases that must be
-handled, all present in the sample:
+### Task 7 — People page (add and list)
+Form to add a person (name), list of people added. Calls POST `/groups/` and
+GET `/groups/{id}`.
 
-- Values as `1,234.56`, `-1,234.56`, `--` for absent
-- Descriptions and timestamps wrapped across lines (`2026-08-07,\n12:32:07`)
-- Fractional share quantities (`210.7346`, `18.6506`)
-- A price split mid-number across a line break (`443.72181818\n2`)
-- `Total <SYMBOL>` and `Total Stocks` subtotal rows, which must be captured for
-  reconciliation but not stored as trades
-- Trade codes `O`, `C`, `C;P`, `P`
-- Non-stock blocks (Forex, bond ETFs) tagged by instrument type
+**Done when:** add a person, see it in the list, refresh persists.
 
-**Done when:** parsers produce the expected row count per section, and the
-tricky cases above each have a named regression test.
+### Task 8 — Expenses page (add and list)
+Form to add an expense (who paid, amount, description, who was involved).
+List of expenses. Calls POST `/groups/{id}/expenses`.
 
-### Task 6 — Import pipeline and reconciliation report
-Wire parsers into a `import_statement(path) -> Statement` service. Then
-`portfolio/reconcile.py` checks every criterion in F1 of the spec and returns a
-report of (check name, expected, actual, delta, pass/fail).
+**Done when:** add expense, list updates; expense data reaches the API.
 
-**Done when:** all F1 acceptance criteria pass on the sample statement, as a
-test. This is the gate — nothing downstream is built until it is green.
+### Task 9 — Settlement page
+Show balances and settlement plan. Calls GET `/groups/{id}/settlement`.
+Clear, readable output: "Bob pays Alice $30."
 
-### Task 7 — Import views (PDF and JSON)
-Two forms: (a) PDF upload: store under `data/statements/`, extract, parse, and
-import. (b) JSON file import: deserialise and import directly. Both converge on
-`import_parsed_sections()`. Reconciliation report rendered; failed checks render
-red and block analysis.
+**Done when:** settlement page shows correct calculation after adding expenses.
 
-**Done when:** uploading the sample PDF and importing a JSON-exported version
-both produce identical all-green reconciliation reports.
+## Milestone 4 — OpenAPI and integration tests
 
-## Milestone 3 — Daily NAV and returns (F2)
+### Task 10 — Write OpenAPI contract
+Document all endpoints (people, expenses, settlement) in `openapi.yaml` with
+request/response schemas. Use it as the contract for both API and frontend.
 
-### Task 8 — Market data layer
-`portfolio/marketdata.py`: `daily_closes(symbols, start, end)` and
-`profile(symbol)` (sector, industry) over yfinance, cached in a local table so
-reruns are offline. Tests use a recorded fixture, never the live network.
+**Done when:** `openapi.yaml` matches API behavior; API tests pass against it.
 
-**Done when:** two calls hit the network once; tests pass with no network.
+### Task 11 — Integration tests (end-to-end)
+Test: create group, add people, add expenses, fetch settlement. Verify the
+settlement is correct.
 
-### Task 9 — Holdings replay
-Reconstruct daily holdings: seed from Mark-to-Market prior quantities at
-2025-12-31, apply trades in timestamp order, carry forward across
-non-trading days.
+**Done when:** test covers the main happy path and known edge cases.
 
-**Done when:** holdings on 2026-09-04 equal the Open Positions section exactly,
-symbol by symbol, as a test.
+### Task 12 — Frontend component tests
+Test: form submission, balance display, settlement rendering.
 
-### Task 10 — Daily NAV series
-Value daily holdings at closes, apply dated cash flows, and track external
-flows separately. Produce a daily series of (market value, cash, NAV,
-external flow).
+**Done when:** `npm test` or `pytest` passes.
 
-**Done when:** final NAV lands within $1 of `315,800.33`, as a test.
+## Milestone 5 — Polish and deployment
 
-### Task 11 — Period returns
-Time-weighted returns from the daily series, chained across external flow days.
-Weekly, monthly, YTD. Money-weighted IRR as a secondary figure.
+### Task 13 — API documentation and error handling
+Add docstrings, validate input (no negative amounts, no duplicate people names),
+return sensible 400/422 errors.
 
-**Done when:** YTD TWR is within 0.5pp of IBKR's `39.46%`; the residual is
-asserted and reported.
+**Done when:** `/docs` (Swagger UI) is readable; invalid input is rejected.
 
-## Milestone 4 — Benchmark and risk (F3)
+### Task 14 — Responsive UI
+Ensure frontend works on mobile (if using plain React, add basic media queries;
+if using Next.js, leverage built-in responsive defaults).
 
-### Task 12 — Benchmark comparison
-Fetch SPY dividend-adjusted closes for the same window. Compute cumulative and
-per-period excess return, plus weeks and months won versus lost.
+**Done when:** pages are readable on desktop and mobile.
 
-### Task 13 — Risk metrics
-Annualised volatility, Sharpe, maximum drawdown with peak and trough dates,
-beta and correlation versus SPY, tracking error.
+### Task 15 — Deploy API and frontend
+Deploy FastAPI to Render/Railway. Deploy frontend to Vercel or the same platform.
 
-### Task 14 — Normal deviation profile
-Weekly return distribution — median and 5th/25th/75th/95th percentiles — plus a
-rolling 20-day volatility band. Flag the current week against that band.
+**Done when:** app is live at a public URL.
 
-## Milestone 5 — Sectors and export (F4)
+### Task 16 — Write ai-usage-report.md
+Reflect: which parts did the AI help with? Where did you override it? What took
+longest?
 
-### Task 15 — Sector enrichment
-Populate `Instrument.sector` and `.industry` from the market data layer.
-Weights by sector, industry and position. Top-5 weight and Herfindahl index.
+**Done when:** report is written and committed.
 
-### Task 16 — Contribution analysis
-Best and worst contributors by absolute P&L and by return contribution,
-reported side by side so a large gain on a small position is visible as such.
+## Backlog tail (Module 3+)
 
-### Task 17 — Metrics export
-Write every computed metric to `exports/*.json` and `exports/*.csv`, with a
-`schema.md` describing each field so Claude Code can query them unaided.
-
-### Task 18 — Dashboard page
-One page: NAV curve versus SPY, period return table, risk table, sector
-weights, contribution table.
-
-## Backlog tail — Module 2 and beyond
-
-- **Challenger / peer substitution.** For each holding, screen same-industry
-  candidates on revenue and EPS growth, debt-to-equity, margin trend and
-  upcoming earnings date; rank them and explain why a swap would improve the
-  portfolio's risk metrics. The headline Module 2 feature.
-- **Position weak-point flags.** Concentration breaches, positions below cost
-  with deteriorating fundamentals, earnings-date exposure, crowded sector bets.
-- Anthropic tool-calling chat over the verified metric functions.
-- Multi-statement history and drift tracking over time.
-- Telegram ingestion (forward a PDF, get a report back).
-- Docker, Postgres, CI/CD, DigitalOcean deploy (Module 3).
-- Authentication, once hosted.
-- Alpha Vantage as a second market data provider for fundamentals.
-- OpenTelemetry instrumentation and alerting (Module 4).
+- **Persistent groups and history:** multi-user, groups survive past the trip.
+- **Editing and deletion:** allow changes to people and expenses.
+- **Payments and receipts:** track actual settlements (Alice venmos Bob $30).
+- **Multiple currency:** detect and convert if needed.
+- **Shared links:** invite friends to a group without needing an account.
+- **Recurring splits:** monthly rent, regular expenses.
+- **Authentication:** users own their groups.
+- **Postgres and production database:** swap SQLite for production.
