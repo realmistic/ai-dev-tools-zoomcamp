@@ -1,14 +1,16 @@
-from django.shortcuts import render, redirect, get_object_or_404
+"""Views for FairShare - call FastAPI backend API."""
+from django.shortcuts import render, redirect
 from django.contrib import messages
-from .models import Group, Person, Expense, ExpenseParticipant
+from decimal import Decimal
+from .api_client import api_client
 from .forms import GroupForm, PersonForm, ExpenseForm
-from .services import calculate_balances, calculate_settlement
 
 
 def index(request):
-    """Home page with list of groups."""
-    groups = Group.objects.all().order_by('-created_at')
-    return render(request, 'fairshare_app/index.html', {'groups': groups})
+    """Home page - list all groups."""
+    # In a real app, we'd need to persist which groups exist
+    # For now, just show a welcome page
+    return render(request, 'fairshare_app/index.html', {})
 
 
 def create_group(request):
@@ -16,127 +18,116 @@ def create_group(request):
     if request.method == 'POST':
         form = GroupForm(request.POST)
         if form.is_valid():
-            group = form.save()
-            messages.success(request, f'Trip "{group.trip_name}" created!')
-            return redirect('group_detail', group_id=group.id)
+            try:
+                group_data = api_client.create_group(form.cleaned_data['trip_name'])
+                messages.success(request, f'Trip "{form.cleaned_data["trip_name"]}" created!')
+                return redirect('group_detail', group_id=group_data['id'])
+            except Exception as e:
+                messages.error(request, f'Error creating trip: {str(e)}')
     else:
         form = GroupForm()
+
     return render(request, 'fairshare_app/create_group.html', {'form': form})
 
 
 def group_detail(request, group_id):
-    """View group details, balances, and settlement."""
-    group = get_object_or_404(Group, id=group_id)
-    people = group.people.all()
-    expenses = group.expenses.all()
-    
-    balances = calculate_balances(group)
-    settlement = calculate_settlement(group)
-    
-    # Get person names for settlement display
-    settlement_with_names = []
-    for s in settlement:
-        debtor = get_object_or_404(Person, id=s['from'])
-        creditor = get_object_or_404(Person, id=s['to'])
-        settlement_with_names.append({
-            'from_name': debtor.name,
-            'to_name': creditor.name,
-            'amount': s['amount'],
-        })
-    
-    context = {
-        'group': group,
-        'people': people,
-        'expenses': expenses,
-        'balances': balances,
-        'settlement': settlement_with_names,
-    }
-    return render(request, 'fairshare_app/group_detail.html', context)
+    """View group details, expenses, balances, and settlement."""
+    try:
+        group = api_client.get_group(group_id)
+        
+        # Convert balances keys to integers for template access
+        balances = {int(k): Decimal(v) for k, v in group.get('balances', {}).items()}
+        
+        # Convert settlement amounts to Decimal
+        settlement = [
+            {
+                **s,
+                'amount': Decimal(str(s['amount']))
+            }
+            for s in group.get('settlement', [])
+        ]
+        
+        context = {
+            'group': group,
+            'people': group.get('people', []),
+            'expenses': group.get('expenses', []),
+            'balances': balances,
+            'settlement': settlement,
+        }
+        return render(request, 'fairshare_app/group_detail.html', context)
+    except Exception as e:
+        messages.error(request, f'Error loading group: {str(e)}')
+        return redirect('index')
 
 
 def add_person(request, group_id):
     """Add a person to a group."""
-    group = get_object_or_404(Group, id=group_id)
-    
+    try:
+        group = api_client.get_group(group_id)
+    except Exception as e:
+        messages.error(request, f'Group not found: {str(e)}')
+        return redirect('index')
+
     if request.method == 'POST':
         form = PersonForm(request.POST)
         if form.is_valid():
-            person = form.save(commit=False)
-            person.group = group
-            person.save()
-            messages.success(request, f'Added {person.name} to the group!')
-            return redirect('group_detail', group_id=group.id)
+            try:
+                api_client.add_person(group_id, form.cleaned_data['name'])
+                messages.success(request, f'Added {form.cleaned_data["name"]} to the group!')
+                return redirect('group_detail', group_id=group_id)
+            except Exception as e:
+                messages.error(request, f'Error adding person: {str(e)}')
     else:
         form = PersonForm()
-    
-    return render(request, 'fairshare_app/add_person.html', {
-        'form': form,
-        'group': group,
-    })
+
+    return render(request, 'fairshare_app/add_person.html', {'group': group, 'form': form})
 
 
 def add_expense(request, group_id):
     """Add an expense to a group."""
-    group = get_object_or_404(Group, id=group_id)
-    
+    try:
+        group = api_client.get_group(group_id)
+    except Exception as e:
+        messages.error(request, f'Group not found: {str(e)}')
+        return redirect('index')
+
     if request.method == 'POST':
-        form = ExpenseForm(request.POST, group=group)
+        form = ExpenseForm(request.POST, people=group['people'])
         if form.is_valid():
-            expense = form.save(commit=False)
-            expense.group = group
-            expense.save()
-            
-            # Add participants
-            people_involved = form.cleaned_data.get('people_involved')
-            for person in people_involved:
-                ExpenseParticipant.objects.create(expense=expense, person=person)
-            
-            messages.success(request, f'Added expense: {expense.description}')
-            return redirect('group_detail', group_id=group.id)
+            try:
+                api_client.add_expense(
+                    group_id,
+                    int(form.cleaned_data['who_paid']),
+                    form.cleaned_data['amount'],
+                    form.cleaned_data['description'],
+                    [int(pid) for pid in form.cleaned_data['people_involved']]
+                )
+                messages.success(request, f'Added expense: {form.cleaned_data["description"]}')
+                return redirect('group_detail', group_id=group_id)
+            except Exception as e:
+                messages.error(request, f'Error adding expense: {str(e)}')
     else:
-        form = ExpenseForm(group=group)
-    
-    return render(request, 'fairshare_app/add_expense.html', {
-        'form': form,
-        'group': group,
-    })
+        form = ExpenseForm(people=group['people'])
+
+    return render(request, 'fairshare_app/add_expense.html', {'group': group, 'form': form})
 
 
 def person_detail(request, group_id, person_id):
-    """View person's expenses and balance (Splitwise-style)."""
-    from decimal import Decimal
-
-    group = get_object_or_404(Group, id=group_id)
-    person = get_object_or_404(Person, id=person_id, group=group)
-
-    # Get all expenses for this person (paid or participated in)
-    paid_expenses = person.paid_expenses.filter(group=group)
-    participated_expenses = person.expense_participations.filter(
-        expense__group=group
-    ).select_related('expense')
-
-    # Calculate what they paid
-    total_paid = sum(expense.amount for expense in paid_expenses) or Decimal('0.00')
-
-    # Calculate their share: sum of (expense / num_participants) for each expense they participated in
-    total_share = Decimal('0.00')
-    for participation in participated_expenses:
-        expense = participation.expense
-        num_participants = expense.participants.count()
-        if num_participants > 0:
-            share_of_expense = expense.amount / num_participants
-            total_share += share_of_expense
-
-    # Balance: positive = owed to them, negative = they owe
-    balance = total_paid - total_share
-
-    context = {
-        'group': group,
-        'person': person,
-        'paid_expenses': paid_expenses,
-        'participated_expenses': participated_expenses,
-        'total_paid': total_paid,
-        'total_share': total_share,
-        'balance': balance,
-    }
-    return render(request, 'fairshare_app/person_detail.html', context)
+    """View person's expenses and balance."""
+    try:
+        group = api_client.get_group(group_id)
+        person_data = api_client.get_person(group_id, person_id)
+        
+        context = {
+            'group': group,
+            'person': person_data,
+            'total_paid': Decimal(str(person_data.get('total_paid', 0))),
+            'total_share': Decimal(str(person_data.get('total_share', 0))),
+            'balance': Decimal(str(person_data.get('balance', 0))),
+            'paid_expenses': person_data.get('paid_expenses', []),
+            'participated_expenses': person_data.get('participated_expenses', []),
+        }
+        return render(request, 'fairshare_app/person_detail.html', context)
+    except Exception as e:
+        messages.error(request, f'Error loading person: {str(e)}')
+        return redirect('index')
