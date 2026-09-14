@@ -22,7 +22,11 @@ class APIClient:
     def get_group(self, group_id: int) -> Dict:
         """Get group details with people, expenses, balances, settlement."""
         response = self.client.get(f"/groups/{group_id}")
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            print(f"DEBUG: API Error {response.status_code}: {response.text}")
+            raise
         return response.json()
 
     def add_person(self, group_id: int, name: str) -> Dict:
