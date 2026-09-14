@@ -27,7 +27,7 @@
                 <ul class="list-group">
                     {% for person in people %}
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        {{ person.name }}
+                        <a href="{% url 'person_detail' group.id person.id %}" class="text-decoration-none">{{ person.name }}</a>
                         {% if balances %}
                         <span class="badge {% if balances|get_item:person.id > 0 %}bg-success{% else %}bg-danger{% endif %}">
                             {% if balances|get_item:person.id > 0 %}
@@ -97,7 +97,7 @@
                     <tbody>
                         {% for person in people %}
                         <tr>
-                            <td>{{ person.name }}</td>
+                            <td><a href="{% url 'person_detail' group.id person.id %}" class="text-decoration-none">{{ person.name }}</a></td>
                             <td class="text-end">
                                 {% if balances|get_item:person.id > 0 %}
                                     <span class="text-success fw-bold">+${{ balances|get_item:person.id|floatformat:2 }}</span>

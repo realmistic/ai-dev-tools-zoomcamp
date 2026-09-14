@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% load custom_filters %}
+
+{% block title %}{{ person.name }} - {{ group.trip_name }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1>{{ person.name }}</h1>
+        <p class="text-muted">{{ group.trip_name }}</p>
+    </div>
+    <div class="col-auto">
+        <a href="{% url 'group_detail' group.id %}" class="btn btn-secondary">← Back to Trip</a>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <h6 class="card-title text-muted">Balance</h6>
+                {% if balance > 0 %}
+                    <div class="h2 text-success fw-bold">+${{ balance|floatformat:2 }}</div>
+                    <p class="text-muted">{{ person.name }} is owed money (lender)</p>
+                {% elif balance < 0 %}
+                    <div class="h2 text-danger fw-bold">-${{ balance|abs_value|floatformat:2 }}</div>
+                    <p class="text-muted">{{ person.name }} owes money (borrower)</p>
+                {% else %}
+                    <div class="h2 text-muted">$0.00</div>
+                    <p class="text-muted">Settled up!</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <h6 class="card-title text-muted">Paid Out</h6>
+                {% with total_paid=paid_expenses|length %}
+                    <div class="h2 fw-bold">{{ paid_expenses.count }} expense{{ paid_expenses.count|pluralize }}</div>
+                    <p class="text-muted">Click to see details</p>
+                {% endwith %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Expenses</h5>
+            </div>
+            <div class="card-body">
+                {% if paid_expenses or participated_expenses %}
+                <div class="list-group">
+                    <h6 class="mb-3 text-muted">💰 Paid by {{ person.name }}:</h6>
+                    {% if paid_expenses %}
+                    {% for expense in paid_expenses %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong class="text-success">${{ expense.amount|floatformat:2 }}</strong> — {{ expense.description|default:"(no description)" }}
+                                <br>
+                                <small class="text-muted">
+                                    Split among: {{ expense.participants.all|join:", " }}
+                                </small>
+                            </div>
+                            <small class="text-muted">{{ expense.created_at|date:"M d, Y" }}</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <p class="text-muted">No expenses paid.</p>
+                    {% endif %}
+
+                    <h6 class="mb-3 text-muted mt-4">📋 Participated in:</h6>
+                    {% if participated_expenses %}
+                    {% for participation in participated_expenses %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong class="text-info">${{ participation.expense.amount|floatformat:2 }}</strong> — {{ participation.expense.description|default:"(no description)" }}
+                                <br>
+                                <small class="text-muted">
+                                    Paid by: <strong>{{ participation.expense.who_paid.name }}</strong>
+                                </small>
+                            </div>
+                            <small class="text-muted">{{ participation.expense.created_at|date:"M d, Y" }}</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <p class="text-muted">Not involved in any expenses.</p>
+                    {% endif %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-4">No expenses recorded.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

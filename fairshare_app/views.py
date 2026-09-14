@@ -100,3 +100,28 @@ def add_expense(request, group_id):
         'form': form,
         'group': group,
     })
+
+
+def person_detail(request, group_id, person_id):
+    """View person's expenses and balance."""
+    group = get_object_or_404(Group, id=group_id)
+    person = get_object_or_404(Person, id=person_id, group=group)
+
+    # Get all expenses for this person (paid or participated in)
+    paid_expenses = person.paid_expenses.filter(group=group)
+    participated_expenses = person.expense_participations.filter(
+        expense__group=group
+    ).select_related('expense')
+
+    # Calculate this person's balance
+    balances = calculate_balances(group)
+    person_balance = balances.get(person.id, 0)
+
+    context = {
+        'group': group,
+        'person': person,
+        'paid_expenses': paid_expenses,
+        'participated_expenses': participated_expenses,
+        'balance': person_balance,
+    }
+    return render(request, 'fairshare_app/person_detail.html', context)
